@@ -4,8 +4,11 @@ import tempfile
 import csv
 import os
 import configparser
+from flask_talisman import Talisman
+from OpenSSL import SSL
 
 app = Flask(__name__)
+Talisman(app)
 
 config = configparser.ConfigParser()
 config.read('config/config.ini')
@@ -40,4 +43,13 @@ def vulnb_check():
     return jsonify({"matched_plugins": matched_plugins_all}), 200
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", debug=True)
+    # Načtení certifikátu a klíče pro HTTPS
+    cert = 'cert.pem'
+    key = 'key.pem'
+
+    # Spuštění aplikace s HTTPS
+    context = SSL.Context(SSL.SSLv23_METHOD)
+    context.use_privatekey_file(key)
+    context.use_certificate_file(cert)
+
+    app.run(host="0.0.0.0", port=443, debug=True, ssl_context=context)
