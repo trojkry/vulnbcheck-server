@@ -2,7 +2,7 @@ import os
 import csv
 from datetime import datetime
 
-def load_threats(threats_file):
+def load_threats_csv(threats_file):
     threats = []
     with open(threats_file, 'r', encoding='utf-8') as csvfile:
         reader = csv.DictReader(csvfile, delimiter=';')
@@ -16,14 +16,14 @@ def check_installed_plugins(plugins_dir, threats, site_name):
         plugin_path = os.path.join(plugins_dir, plugin)
         if os.path.isdir(plugin_path):
             plugin_name = plugin.lower()
+            installed_version = get_plugin_version(plugin_path)
             for threat in threats:
-                if threat['name'].lower() == plugin_name:
+                if threat['slug'].lower() == plugin_name:
                     affected_versions = threat['affected_versions']
-                    installed_version = get_plugin_version(plugin_path)
                     if is_vulnerable(installed_version, affected_versions):
                         matched_plugins.append({
                             'Site Name': site_name,
-                            'Plugin Name': plugin,
+                            'Plugin Name': threat['name'],
                             'Installed Version': installed_version,
                             'Threat Title': threat['title'],
                             'CVE': threat['cve'],
@@ -31,7 +31,6 @@ def check_installed_plugins(plugins_dir, threats, site_name):
                             'Reference': threat['reference']
                         })
                         break
-
     return matched_plugins
 
 def get_plugin_version(plugin_path):
@@ -46,9 +45,28 @@ def get_plugin_version(plugin_path):
     return version
 
 def is_vulnerable(installed_version, affected_versions):
-    if installed_version in affected_versions:
-        return True
+    affected_ranges = affected_versions.split(' ')
+    for affected_range in affected_ranges:
+        if '-' in affected_range:
+            start, end = affected_range.split('-')
+            start, end = start.strip(), end.strip()
+            if compare_versions(start, installed_version) <= 0 and compare_versions(end, installed_version) >= 0:
+                return True
+        elif affected_range == installed_version:
+            return True
     return False
+
+def compare_versions(version1, version2):
+    v1_parts = [int(x) if x.isdigit() else 0 for x in version1.split('.')]
+    v2_parts = [int(x) if x.isdigit() else 0 for x in version2.split('.')]
+    for i in range(max(len(v1_parts), len(v2_parts))):
+        v1_part = v1_parts[i] if i < len(v1_parts) else 0
+        v2_part = v2_parts[i] if i < len(v2_parts) else 0
+        if v1_part < v2_part:
+            return -1
+        if v1_part > v2_part:
+            return 1
+    return 0
 
 def write_report(matched_plugins, report_filename):
     headers = ['Site Name', 'Plugin Name', 'Installed Version', 'Threat Title', 'CVE', 'CVSS Score', 'Reference']
@@ -65,7 +83,6 @@ def checkvlnb(parent_dir, threats):
         site_path = os.path.join(parent_dir, site_dir)
         if os.path.isdir(site_path):
             plugins_dir = os.path.join(site_path, 'wp-content', 'plugins')
-
             if os.path.isdir(plugins_dir):
                 matched_plugins = check_installed_plugins(plugins_dir, threats, site_dir)
                 matched_plugins_all.extend(matched_plugins)
@@ -80,4 +97,4 @@ def checkvlnb(parent_dir, threats):
     else:
         print("No vulnerable plugins found across all sites.")
 
-    return matched_plugins_all  # Vrací seznam shod pro použití v prvním kódu
+    return matched_plugins_all

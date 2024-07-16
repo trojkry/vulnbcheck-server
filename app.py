@@ -1,14 +1,10 @@
 from flask import Flask, request, jsonify
-from components import check_vulnb  
-import tempfile
-import csv
+from components import check_vulnb
 import os
+import csv
 import configparser
-from flask_talisman import Talisman
-from OpenSSL import SSL
 
 app = Flask(__name__)
-Talisman(app)
 
 config = configparser.ConfigParser()
 config.read('config/config.ini')
@@ -40,16 +36,11 @@ def vulnb_check():
     parent_dir = config["DEFAULT"]["PARENT_DIR"]
     matched_plugins_all = check_vulnb.checkvlnb(parent_dir, threats)
 
-    return jsonify({"matched_plugins": matched_plugins_all}), 200
+    response_data = {
+        "matched_plugins": matched_plugins_all,
+        "report_file": temp_file  # Optionally return the path to the generated report
+    }
+    return jsonify(response_data), 200
 
 if __name__ == "__main__":
-    # Načtení certifikátu a klíče pro HTTPS
-    cert = 'cert.pem'
-    key = 'key.pem'
-
-    # Spuštění aplikace s HTTPS
-    context = SSL.Context(SSL.SSLv23_METHOD)
-    context.use_privatekey_file(key)
-    context.use_certificate_file(cert)
-
-    app.run(host="0.0.0.0", port=443, debug=True, ssl_context=context)
+    app.run(host="0.0.0.0", debug=True)
