@@ -35,13 +35,13 @@ def log_request_info():
     logging.info('Headers: %s', request.headers)
     logging.info('Body: %s', request.get_data())
 
-def check_ip(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if request.remote_addr != AUTHORIZED_IP:
-            return jsonify({"error": "Unauthorized IP address"}), 403
-        return f(*args, **kwargs)
-    return decorated_function
+#def check_ip(f):
+#    @wraps(f)
+#    def decorated_function(*args, **kwargs):
+#        if request.remote_addr != AUTHORIZED_IP:
+#            return jsonify({"error": "Unauthorized IP address"}), 403
+#        return f(*args, **kwargs)
+#    return decorated_function
 
 def load_threats_csv(threats_file):
     threats = []
@@ -76,13 +76,13 @@ def vulnb_check():
     }
     return jsonify(response_data), 200
 
-@app.after_request
-def set_secure_headers(response):
-    response.headers['Content-Security-Policy'] = "default-src 'self'"
-    response.headers['X-Content-Type-Options'] = 'nosniff'
-    response.headers['X-Frame-Options'] = 'DENY'
-    response.headers['X-XSS-Protection'] = '1; mode=block'
-    return response
+##@app.after_request
+#def set_secure_headers(response):
+ #   response.headers['Content-Security-Policy'] = "default-src 'self'"
+  #  response.headers['X-Content-Type-Options'] = 'nosniff'
+   # response.headers['X-Frame-Options'] = 'DENY'
+    #response.headers['X-XSS-Protection'] = '1; mode=block'
+    #return response
 
 if __name__ == "__main__":
     context = ('cert.pem', 'key.pem')
