@@ -109,4 +109,4 @@ def checkvlnb(parent_dir, threats):
     else:
         print("No vulnerable plugins found across all sites.")
 
-    return matched_plugins_all
+    return matched
