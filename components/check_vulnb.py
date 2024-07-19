@@ -82,16 +82,20 @@ def checkvlnb(parent_dir, threats):
     matched_plugins_all = []
     
     def process_site(site_dir):
-        site_path = os.path.join(parent_dir, site_dir)
-        plugins_dir = os.path.join(site_path, 'wp-content', 'plugins')
-        if os.path.isdir(plugins_dir):
-            return check_installed_plugins(plugins_dir, threats, site_dir)
-        else:
-            print(f"No plugins directory found for site: {site_dir}")
-            return []
+        plugins_dirs = []
+        for root, dirs, files in os.walk(site_dir):
+            for dir in dirs:
+                if dir == 'plugins' and 'wp-content' in root:
+                    plugins_dirs.append(os.path.join(root, dir))
+
+        site_matched_plugins = []
+        for plugins_dir in plugins_dirs:
+            site_matched_plugins.extend(check_installed_plugins(plugins_dir, threats, site_dir))
+        
+        return site_matched_plugins
 
     with concurrent.futures.ThreadPoolExecutor() as executor:
-        future_to_site = {executor.submit(process_site, site_dir): site_dir for site_dir in os.listdir(parent_dir) if os.path.isdir(os.path.join(parent_dir, site_dir))}
+        future_to_site = {executor.submit(process_site, os.path.join(parent_dir, site_dir)): site_dir for site_dir in os.listdir(parent_dir) if os.path.isdir(os.path.join(parent_dir, site_dir))}
         
         for future in concurrent.futures.as_completed(future_to_site):
             site_dir = future_to_site[future]
