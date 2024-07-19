@@ -1,8 +1,7 @@
 from flask import Flask, request, jsonify
-from components import check_vulnb  
-import tempfile
-import csv
+from components import check_vulnb
 import os
+import csv
 import configparser
 
 app = Flask(__name__)
@@ -37,12 +36,11 @@ def vulnb_check():
     parent_dir = config["DEFAULT"]["PARENT_DIR"]
     matched_plugins_all = check_vulnb.checkvlnb(parent_dir, threats)
 
-    return jsonify({"matched_plugins": matched_plugins_all}), 200
-
-@app.route("/", methods = ["POST", "GET"])
-def main():
-    return "AHOJ"
+    response_data = {
+        "matched_plugins": matched_plugins_all,
+        "report_file": temp_file  # Optionally return the path to the generated report
+    }
+    return jsonify(response_data), 200
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", debug=True)
-    
+    app.run(host="0.0.0.0", port=443, debug=True, ssl_context=('cert.pem', 'key.pem'))
