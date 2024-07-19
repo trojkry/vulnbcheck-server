@@ -7,16 +7,21 @@ from functools import wraps
 from werkzeug.utils import secure_filename
 from flask_wtf.csrf import CSRFProtect
 import logging
+import secrets
 
 app = Flask(__name__)
 
+# Load configuration
 config = configparser.ConfigParser()
 config.read('config/config.ini')
 
 app.config['UPLOAD_FOLDER'] = config["DEFAULT"]["UPLOAD_FOLDER"]
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 MB
 
-AUTHORIZED_IP = '123.45.67.89'  # IP adresa vašeho webového serveru
+# Set the secret key for CSRF protection and other security features
+app.config['SECRET_KEY'] = secrets.token_hex(16)  # or a static secret key
+
+AUTHORIZED_IP = '10.0.2.2'  # IP adresa vašeho webového serveru
 
 # CSRF protection
 csrf = CSRFProtect()
@@ -82,4 +87,3 @@ def set_secure_headers(response):
 if __name__ == "__main__":
     context = ('cert.pem', 'key.pem')
     app.run(host="0.0.0.0", port=443, debug=False, ssl_context=context)
-    
