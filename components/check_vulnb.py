@@ -85,9 +85,7 @@ def find_websites(root_dir):
             potential_plugins_path = os.path.join(root, dir, 'wp-content', 'plugins')
             if os.path.isdir(potential_plugins_path):
                 websites.append(root)
-            elif os.path.isdir(os.path.join(root_dir, dir)):
-                websites.append(os.path.join(root_dir, dir))
-        break  # Only check the first level of directories in the root directory
+                break  # Only add the root directory once even if there are multiple 'wp-content/plugins'
     return websites
 
 def checkvlnb(parent_dir, threats):
