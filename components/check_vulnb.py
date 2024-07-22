@@ -84,11 +84,9 @@ def find_websites(root_dir):
         for dir in dirs:
             potential_plugins_path = os.path.join(root, dir, 'wp-content', 'plugins')
             if os.path.isdir(potential_plugins_path):
-                websites.append(os.path.join(root, dir))
-        # Check if the current root directory itself is a website
-        root_plugins_path = os.path.join(root_dir, 'wp-content', 'plugins')
-        if os.path.isdir(root_plugins_path):
-            websites.append(root_dir)
+                websites.append(root)
+            elif os.path.isdir(os.path.join(root_dir, dir)):
+                websites.append(os.path.join(root_dir, dir))
         break  # Only check the first level of directories in the root directory
     return websites
 
