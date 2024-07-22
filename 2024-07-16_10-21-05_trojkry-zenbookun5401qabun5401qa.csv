@@ -1,3 +1,0 @@
-Site Name,Plugin Name,Installed Version,Threat Title,CVE,CVSS Score,Reference
-test,Akismet Anti-spam: Spam Protection,5.3.2,Akismet <= 5.3.2 - Example Vulnerability,CVE-2024-12345,7.5,['https://example.com/vulnerability']
-wordpress,Akismet Anti-spam: Spam Protection,5.3.2,Akismet <= 5.3.2 - Example Vulnerability,CVE-2024-12345,7.5,['https://example.com/vulnerability']
