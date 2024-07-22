@@ -78,12 +78,23 @@ def write_report(matched_plugins, report_filename):
             writer.writerow(plugin)
     print(f"Report generated: {report_filename}")
 
+def find_websites(root_dir):
+    websites = []
+    for root, dirs, files in os.walk(root_dir):
+        for dir in dirs:
+            if 'plugins' in os.listdir(os.path.join(root, dir)):
+                websites.append(os.path.join(root, dir))
+        # Check if the current root directory itself is a website
+        if 'plugins' in os.listdir(root_dir):
+            websites.append(root_dir)
+        break  # Only check the first level of directories in the root directory
+    return websites
+
 def checkvlnb(parent_dir, threats):
     matched_plugins_all = []
-    
+
     def process_site(site_dir):
         plugins_dirs = []
-        # Check if the site_dir contains 'plugins' directories
         for root, dirs, files in os.walk(site_dir):
             for dir in dirs:
                 if dir == 'plugins' and 'wp-content' in root:
@@ -95,19 +106,19 @@ def checkvlnb(parent_dir, threats):
         
         return site_matched_plugins
 
-    # Check sites in parent_dir directly
-    for site_dir in os.listdir(parent_dir):
-        full_path = os.path.join(parent_dir, site_dir)
-        if os.path.isdir(full_path):
-            with concurrent.futures.ThreadPoolExecutor() as executor:
-                future_to_site = {executor.submit(process_site, full_path): site_dir}
-                for future in concurrent.futures.as_completed(future_to_site):
-                    site_dir = future_to_site[future]
-                    try:
-                        matched_plugins = future.result()
-                        matched_plugins_all.extend(matched_plugins)
-                    except Exception as exc:
-                        print(f"Exception occurred for site {site_dir}: {exc}")
+    # Find all websites, both in root and in subdirectories
+    websites = find_websites(parent_dir)
+    
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        future_to_site = {executor.submit(process_site, site_dir): site_dir for site_dir in websites}
+        
+        for future in concurrent.futures.as_completed(future_to_site):
+            site_dir = future_to_site[future]
+            try:
+                matched_plugins = future.result()
+                matched_plugins_all.extend(matched_plugins)
+            except Exception as exc:
+                print(f"Exception occurred for site {site_dir}: {exc}")
 
     if matched_plugins_all:
         timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
