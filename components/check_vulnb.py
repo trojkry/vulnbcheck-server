@@ -88,6 +88,19 @@ def find_websites(root_dir):
                 break  # Only add the root directory once even if there are multiple 'wp-content/plugins'
     return websites
 
+def is_website_dir(directory):
+    wp_content_plugins_path = os.path.join(directory, 'wp-content', 'plugins')
+    return os.path.isdir(wp_content_plugins_path)
+
+def find_all_websites(root_dir):
+    websites = []
+    for root, dirs, files in os.walk(root_dir):
+        for dir in dirs:
+            dir_path = os.path.join(root, dir)
+            if is_website_dir(dir_path):
+                websites.append(dir_path)
+    return websites
+
 def checkvlnb(parent_dir, threats):
     matched_plugins_all = []
 
@@ -105,7 +118,7 @@ def checkvlnb(parent_dir, threats):
         return site_matched_plugins
 
     # Find all websites, both in root and in subdirectories
-    websites = find_websites(parent_dir)
+    websites = find_all_websites(parent_dir)
     
     with concurrent.futures.ThreadPoolExecutor() as executor:
         future_to_site = {executor.submit(process_site, site_dir): site_dir for site_dir in websites}
