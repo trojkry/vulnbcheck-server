@@ -6,22 +6,21 @@ import concurrent.futures
 def load_threats_csv(threats_file):
     threats = []
     with open(threats_file, 'r', encoding='utf-8') as csvfile:
-        reader = csv.DictReader(csvfile, delimiter=';')
+        reader = csv.reader(csvfile, delimiter=';')
+        headers = next(reader)
         for row in reader:
-            threats.append(row)
+            threats.append(dict(zip(headers, row)))
     return threats
 
 def compare_versions(version1, version2):
     v1_parts = [int(x) if x.isdigit() else 0 for x in version1.split('.')]
     v2_parts = [int(x) if x.isdigit() else 0 for x in version2.split('.')]
-    for i in range(max(len(v1_parts), len(v2_parts))):
-        v1_part = v1_parts[i] if i < len(v1_parts) else 0
-        v2_part = v2_parts[i] if i < len(v2_parts) else 0
+    for v1_part, v2_part in zip(v1_parts, v2_parts):
         if v1_part < v2_part:
             return -1
         if v1_part > v2_part:
             return 1
-    return 0
+    return (len(v1_parts) > len(v2_parts)) - (len(v1_parts) < len(v2_parts))
 
 def is_vulnerable(installed_version, affected_versions):
     affected_ranges = affected_versions.split(' ')
@@ -37,14 +36,12 @@ def is_vulnerable(installed_version, affected_versions):
 
 def get_plugin_version(plugin_path):
     plugin_file = os.path.join(plugin_path, os.path.basename(plugin_path) + '.php')
-    version = "Unknown"
     if os.path.isfile(plugin_file):
         with open(plugin_file, 'r', encoding='utf-8') as file:
             for line in file:
                 if 'Version:' in line:
-                    version = line.split('Version:')[1].strip()
-                    break
-    return version
+                    return line.split('Version:')[1].strip()
+    return "Unknown"
 
 def check_installed_plugins(plugins_dir, threats, site_name):
     matched_plugins = []
@@ -55,8 +52,7 @@ def check_installed_plugins(plugins_dir, threats, site_name):
             installed_version = get_plugin_version(plugin_path)
             for threat in threats:
                 if threat['slug'].lower() == plugin_name:
-                    affected_versions = threat['affected_versions']
-                    if is_vulnerable(installed_version, affected_versions):
+                    if is_vulnerable(installed_version, threat['affected_versions']):
                         matched_plugins.append({
                             'Site Name': site_name,
                             'Plugin Name': threat['name'],
@@ -74,23 +70,11 @@ def write_report(matched_plugins, report_filename):
     with open(report_filename, 'w', newline='', encoding='utf-8') as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=headers)
         writer.writeheader()
-        for plugin in matched_plugins:
-            writer.writerow(plugin)
+        writer.writerows(matched_plugins)
     print(f"Report generated: {report_filename}")
 
-def find_websites(root_dir):
-    websites = []
-    for root, dirs, files in os.walk(root_dir):
-        for dir in dirs:
-            potential_plugins_path = os.path.join(root, dir, 'wp-content', 'plugins')
-            if os.path.isdir(potential_plugins_path):
-                websites.append(root)
-                break  # Only add the root directory once even if there are multiple 'wp-content/plugins'
-    return websites
-
 def is_website_dir(directory):
-    wp_content_plugins_path = os.path.join(directory, 'wp-content', 'plugins')
-    return os.path.isdir(wp_content_plugins_path)
+    return os.path.isdir(os.path.join(directory, 'wp-content', 'plugins'))
 
 def find_all_websites(root_dir):
     websites = []
@@ -112,12 +96,13 @@ def checkvlnb(parent_dir, threats):
                     plugins_dirs.append(os.path.join(root, dir))
 
         site_matched_plugins = []
-        for plugins_dir in plugins_dirs:
-            site_matched_plugins.extend(check_installed_plugins(plugins_dir, threats, site_dir))
+        with concurrent.futures.ThreadPoolExecutor() as plugin_executor:
+            futures = [plugin_executor.submit(check_installed_plugins, plugins_dir, threats, site_dir) for plugins_dir in plugins_dirs]
+            for future in concurrent.futures.as_completed(futures):
+                site_matched_plugins.extend(future.result())
         
         return site_matched_plugins
 
-    # Find all websites, both in root and in subdirectories
     websites = find_all_websites(parent_dir)
     
     with concurrent.futures.ThreadPoolExecutor() as executor:
@@ -126,8 +111,7 @@ def checkvlnb(parent_dir, threats):
         for future in concurrent.futures.as_completed(future_to_site):
             site_dir = future_to_site[future]
             try:
-                matched_plugins = future.result()
-                matched_plugins_all.extend(matched_plugins)
+                matched_plugins_all.extend(future.result())
             except Exception as exc:
                 print(f"Exception occurred for site {site_dir}: {exc}")
 
