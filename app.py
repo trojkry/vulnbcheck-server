@@ -3,8 +3,11 @@ from components import check_vulnb
 import os
 import csv
 import configparser
+from flask_jwt_extended import JWTManager, jwt_required
 
 app = Flask(__name__)
+app.config['JWT_SECRET_KEY'] = '3eb7e91f3370520c371cfbf05d474caf6d62657e5b5e5217514785901ff0b640'  # This should be the same secret key as in the gateway
+jwt = JWTManager(app)
 
 config = configparser.ConfigParser()
 config.read('config/config.ini')
@@ -20,6 +23,7 @@ def load_threats_csv(threats_file):
     return threats
 
 @app.route("/vulnbcheck", methods=["POST"])
+@jwt_required()
 def vulnb_check():
     if 'file' not in request.files:
         return jsonify({"error": "No file part"}), 400
